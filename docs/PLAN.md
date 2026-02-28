@@ -264,12 +264,42 @@ Add backend connectivity to OpenRouter using `openai/gpt-oss-120b:free`, with a 
 
 ## Part 9: Structured Outputs + Board Context
 
-Send board JSON, chat history, and user prompt to model. Require structured output with:
+### Objective
 
-- assistant response text
-- optional board mutation operation list
+Add an authenticated AI chat backend route that sends board context to OpenRouter, requires structured JSON output, and applies board mutations atomically.
 
-Validate and apply operations atomically in backend.
+### Checklist
+
+- [x] Add AI chat request/response models and operation schemas.
+- [x] Send board JSON, chat history, and user message to model `openai/gpt-oss-120b:free`.
+- [x] Require structured JSON output containing `assistant_response` and `operations`.
+- [x] Add authenticated `POST /api/ai/chat` endpoint.
+- [x] Validate model output with Pydantic before applying operations.
+- [x] Apply operations atomically and only persist on full success.
+- [x] Return response contract with assistant message, operations, update flag, and board payload.
+- [x] Add backend tests for auth, missing key, success path, no-op path, invalid structured output, and atomic rollback on failure.
+- [x] Validate container smoke call for `/api/ai/chat`.
+
+### Tests
+
+- Backend tests:
+`docker run --rm -v "$PWD/backend:/work" -w /work ghcr.io/astral-sh/uv:python3.12-bookworm uv run --extra dev pytest -q`
+- AI chat smoke:
+- login with `user` / `password`
+- `POST /api/ai/chat` with `{"message":"...","history":[]}`
+- verify response includes:
+- `assistantMessage` (string)
+- `operations` (array)
+- `boardUpdated` (boolean)
+- `board` (valid board JSON)
+
+### Success Criteria
+
+- `/api/ai/chat` accepts board-aware chat requests for authenticated users.
+- Model output is enforced as structured JSON before mutation logic.
+- Board operations are applied as all-or-nothing and do not partially persist.
+- Response contract is stable for Part 10 frontend integration.
+- Backend tests and container smoke checks pass.
 
 ## Part 10: AI sidebar UX
 

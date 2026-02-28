@@ -94,6 +94,24 @@ Expected:
 - If key is missing/invalid: `500` with error detail.
 - If key is valid: `200` with `model`, `prompt`, and non-empty `response` text.
 
+## Verify Part 9
+
+- Ensure `.env` in project root contains:
+`OPENROUTER_API_KEY=...`
+- Login:
+`curl -c /tmp/pm_ai_chat_cookie.txt -H 'Content-Type: application/json' -d '{"username":"user","password":"password"}' http://localhost:8000/api/auth/login`
+- Send AI chat request:
+`curl -b /tmp/pm_ai_chat_cookie.txt -H 'Content-Type: application/json' -X POST -d '{"message":"Say hello and do not change the board","history":[]}' http://localhost:8000/api/ai/chat`
+
+Expected:
+
+- If key is missing/invalid or rate-limited: `500` with error detail.
+- If request succeeds: `200` JSON with:
+- `assistantMessage`
+- `operations` array
+- `boardUpdated` boolean
+- `board` payload
+
 ## Backend tests
 
 From project root:

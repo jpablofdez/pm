@@ -9,9 +9,10 @@ from pathlib import Path
 from fastapi import Cookie, FastAPI, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app import ai_client
+from app.ai_kanban import AIChatRequest, AIKanbanResponse, apply_operations_to_board
 from app.database import load_board_for_user, save_board_for_user
 from app.kanban_schema import BoardModel
 
@@ -166,6 +167,43 @@ def ai_test(
         "model": ai_client.OPENROUTER_MODEL,
         "prompt": "2+2",
         "response": response,
+    }
+
+
+@app.post("/api/ai/chat")
+def ai_chat(
+    payload: AIChatRequest,
+    session_token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME),
+) -> dict[str, object]:
+    username = _require_authenticated_username(session_token)
+
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY is not configured.")
+
+    current_board = load_board_for_user(username)
+
+    try:
+        structured_payload = ai_client.run_kanban_chat(
+            api_key=api_key,
+            board_data=current_board,
+            history=[message.model_dump() for message in payload.history],
+            message=payload.message,
+        )
+        ai_result = AIKanbanResponse.model_validate(structured_payload)
+        next_board = apply_operations_to_board(current_board, ai_result.operations)
+    except (ai_client.AIConnectivityError, ValidationError, ValueError) as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+    board_updated = len(ai_result.operations) > 0
+    if board_updated:
+        save_board_for_user(username, next_board)
+
+    return {
+        "assistantMessage": ai_result.assistant_response,
+        "operations": [operation.model_dump() for operation in ai_result.operations],
+        "boardUpdated": board_updated,
+        "board": next_board,
     }
 
 
