@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -15,9 +15,22 @@ import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { createId, initialData, moveCard, type BoardData } from "@/lib/kanban";
 
-export const KanbanBoard = () => {
+type KanbanBoardProps = {
+  onLogout?: () => void | Promise<void>;
+  isLoggingOut?: boolean;
+  syncEnabled?: boolean;
+};
+
+export const KanbanBoard = ({
+  onLogout,
+  isLoggingOut = false,
+  syncEnabled = true,
+}: KanbanBoardProps) => {
   const [board, setBoard] = useState<BoardData>(() => initialData);
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [isLoadingBoard, setIsLoadingBoard] = useState(syncEnabled);
+  const [isSavingBoard, setIsSavingBoard] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -26,6 +39,89 @@ export const KanbanBoard = () => {
   );
 
   const cardsById = useMemo(() => board.cards, [board.cards]);
+
+  const persistBoard = useCallback(
+    async (nextBoard: BoardData) => {
+      if (!syncEnabled) {
+        return;
+      }
+
+      setIsSavingBoard(true);
+      setSyncError(null);
+
+      try {
+        const response = await fetch("/api/board", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify(nextBoard),
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to save board.");
+        }
+      } catch (_error) {
+        setSyncError("Unable to save changes.");
+      } finally {
+        setIsSavingBoard(false);
+      }
+    },
+    [syncEnabled]
+  );
+
+  const updateBoard = useCallback(
+    (updater: (current: BoardData) => BoardData) => {
+      setBoard((prev) => {
+        const next = updater(prev);
+        void persistBoard(next);
+        return next;
+      });
+    },
+    [persistBoard]
+  );
+
+  useEffect(() => {
+    if (!syncEnabled) {
+      setIsLoadingBoard(false);
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loadBoard = async () => {
+      setIsLoadingBoard(true);
+      setSyncError(null);
+
+      try {
+        const response = await fetch("/api/board", {
+          credentials: "include",
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to load board.");
+        }
+
+        const payload = (await response.json()) as BoardData;
+        if (!isCancelled) {
+          setBoard(payload);
+        }
+      } catch (_error) {
+        if (!isCancelled) {
+          setSyncError("Unable to load saved board.");
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingBoard(false);
+        }
+      }
+    };
+
+    void loadBoard();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [syncEnabled]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveCardId(event.active.id as string);
@@ -39,14 +135,14 @@ export const KanbanBoard = () => {
       return;
     }
 
-    setBoard((prev) => ({
+    updateBoard((prev) => ({
       ...prev,
       columns: moveCard(prev.columns, active.id as string, over.id as string),
     }));
   };
 
   const handleRenameColumn = (columnId: string, title: string) => {
-    setBoard((prev) => ({
+    updateBoard((prev) => ({
       ...prev,
       columns: prev.columns.map((column) =>
         column.id === columnId ? { ...column, title } : column
@@ -56,7 +152,7 @@ export const KanbanBoard = () => {
 
   const handleAddCard = (columnId: string, title: string, details: string) => {
     const id = createId("card");
-    setBoard((prev) => ({
+    updateBoard((prev) => ({
       ...prev,
       cards: {
         ...prev.cards,
@@ -71,7 +167,7 @@ export const KanbanBoard = () => {
   };
 
   const handleDeleteCard = (columnId: string, cardId: string) => {
-    setBoard((prev) => {
+    updateBoard((prev) => {
       return {
         ...prev,
         cards: Object.fromEntries(
@@ -79,11 +175,11 @@ export const KanbanBoard = () => {
         ),
         columns: prev.columns.map((column) =>
           column.id === columnId
-            ? {
-                ...column,
-                cardIds: column.cardIds.filter((id) => id !== cardId),
-              }
-            : column
+          ? {
+              ...column,
+              cardIds: column.cardIds.filter((id) => id !== cardId),
+            }
+          : column
         ),
       };
     });
@@ -111,13 +207,34 @@ export const KanbanBoard = () => {
                 and capture quick notes without getting buried in settings.
               </p>
             </div>
-            <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] px-5 py-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
-                Focus
-              </p>
-              <p className="mt-2 text-lg font-semibold text-[var(--primary-blue)]">
-                One board. Five columns. Zero clutter.
-              </p>
+            <div className="flex flex-col gap-3">
+              <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] px-5 py-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
+                  Focus
+                </p>
+                <p className="mt-2 text-lg font-semibold text-[var(--primary-blue)]">
+                  One board. Five columns. Zero clutter.
+                </p>
+                <p className="mt-2 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
+                  {isLoadingBoard
+                    ? "Loading board..."
+                    : isSavingBoard
+                      ? "Saving..."
+                      : syncError
+                        ? syncError
+                        : "Changes synced"}
+                </p>
+              </div>
+              {onLogout ? (
+                <button
+                  type="button"
+                  className="rounded-full bg-[var(--secondary-purple)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  onClick={onLogout}
+                  disabled={isLoggingOut}
+                >
+                  {isLoggingOut ? "Logging out..." : "Log out"}
+                </button>
+              ) : null}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-4">

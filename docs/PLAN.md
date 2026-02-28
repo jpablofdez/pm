@@ -1,37 +1,248 @@
-# High level steps for project
+# Project Plan
 
-Part 1: Plan
+## Part 1: Plan
 
-Enrich this document to plan out each of these parts in detail, with substeps listed out as a checklist to be checked off by the agent, and with tests and success critieria for each. Also create an AGENTS.md file inside the frontend directory that describes the existing code there. Ensure the user checks and approves the plan.
+- [x] User confirmed and approved the implementation plan.
 
-Part 2: Scaffolding
+## Part 2: Scaffolding
 
-Set up the Docker infrastructure, the backend in backend/ with FastAPI, and write the start and stop scripts in the scripts/ directory. This should serve example static HTML to confirm that a 'hello world' example works running locally and also make an API call.
+### Objective
 
-Part 3: Add in Frontend
+Create a runnable Dockerized FastAPI baseline that serves static HTML at `/` and JSON APIs under `/api`.
 
-Now update so that the frontend is statically built and served, so that the app has the demo Kanban board displayed at /. Comprehensive unit and integration tests.
+### Checklist
 
-Part 4: Add in a fake user sign in experience
+- [x] Create backend FastAPI app in `backend/app/`.
+- [x] Add routes: `GET /`, `GET /api/hello`, `GET /api/health`.
+- [x] Serve `/` from `backend/static/index.html`.
+- [x] Add client-side fetch from `/` to `/api/hello`.
+- [x] Add `backend/pyproject.toml` with runtime and test dependencies.
+- [x] Generate `backend/uv.lock` via `uv`.
+- [x] Add root `Dockerfile` for backend service.
+- [x] Add root `docker-compose.yml` exposing port `8000`.
+- [x] Add scripts:
+- [x] `scripts/start_mac.sh`
+- [x] `scripts/stop_mac.sh`
+- [x] `scripts/start_linux.sh`
+- [x] `scripts/stop_linux.sh`
+- [x] `scripts/start_windows.ps1`
+- [x] `scripts/stop_windows.ps1`
+- [x] Add backend route tests.
+- [x] Validate backend tests pass.
+- [x] Validate container smoke tests pass.
 
-Now update so that on first hitting /, you need to log in with dummy credentials ("user", "password") in order to see the Kanban, and you can log out. Comprehensive tests.
+### Tests
 
-Part 5: Database modeling
+- Backend tests:
+- `GET /` returns `200` and `text/html`.
+- `GET /api/hello` returns `{"message":"hello world"}`.
+- `GET /api/health` returns `{"status":"ok"}`.
+- Smoke tests:
+- Build and run with `docker compose up --build -d`.
+- `curl http://localhost:8000/` returns HTML.
+- `curl http://localhost:8000/api/hello` returns expected JSON.
+- `curl http://localhost:8000/api/health` returns expected JSON.
+- Stop with `docker compose down`.
 
-Now propose a database schema for the Kanban, saving it as JSON. Document the database approach in docs/ and get user sign off.
+### Success Criteria
 
-Part 6: Backend
+- `http://localhost:8000/` serves static HTML and displays API result from `/api/hello`.
+- API contracts match exactly.
+- Backend tests pass.
+- Docker smoke checks pass.
+- Required OS scripts exist and execute expected compose commands.
 
-Now add API routes to allow the backend to read and change the Kanban for a given user; test this thoroughly with backend unit tests. The database should be created if it doesn't exist.
+## Part 3: Add in Frontend
 
-Part 7: Frontend + Backend
+### Objective
 
-Now have the frontend actually use the backend API, so that the app is a proper persistent Kanban board. Test very throughly.
+Serve the existing Next.js Kanban demo from FastAPI at `/` using a static export built inside Docker.
 
-Part 8: AI connectivity
+### Checklist
 
-Now allow the backend to make an AI call via OpenRouter. Test connectivity with a simple "2+2" test and ensure the AI call is working.
+- [x] Configure Next.js static export.
+- [x] Add frontend build stage in `Dockerfile`.
+- [x] Copy exported frontend into backend static directory in container image.
+- [x] Update backend app to serve exported frontend at `/`.
+- [x] Keep API routes available under `/api`.
+- [x] Add frontend directory documentation (`frontend/AGENTS.md`).
+- [x] Validate frontend unit tests pass.
+- [x] Validate frontend e2e tests pass.
+- [x] Validate backend tests still pass.
+- [x] Validate Docker smoke checks for Kanban at `/`.
 
-Part 9: Now extend the backend call so that it always calls the AI with the JSON of the Kanban board, plus the user's question (and conversation history). The AI should respond with Structured Outputs that includes the response to the user and optionaly an update to the Kanban. Test thoroughly.
+### Tests
 
-Part 10: Now add a beautiful sidebar widget to the UI supporting full AI chat, and allowing the LLM (as it determines) to update the Kanban based on its Structured Outputs. If the AI updates the Kanban, then the UI should refresh automatically.
+- Frontend unit tests: `cd frontend && npm run test:unit`
+- Frontend e2e tests: `cd frontend && npm run test:e2e`
+- Backend tests: `docker run --rm -v "$PWD/backend:/work" -w /work ghcr.io/astral-sh/uv:python3.12-bookworm uv run --extra dev pytest -q`
+- Docker smoke tests:
+- `./scripts/start_mac.sh` (or Linux/Windows equivalent)
+- `curl http://localhost:8000/` contains `Kanban Studio`
+- `curl http://localhost:8000/api/hello` returns expected JSON
+- `curl http://localhost:8000/api/health` returns expected JSON
+- `./scripts/stop_mac.sh` (or Linux/Windows equivalent)
+
+### Success Criteria
+
+- `http://localhost:8000/` renders the Kanban board UI (static Next export).
+- FastAPI API routes under `/api` continue to work unchanged.
+- Frontend unit and e2e tests pass.
+- Backend tests pass.
+- Docker run/smoke checks pass.
+
+## Part 4: Add in a fake user sign in experience
+
+### Objective
+
+Require sign in before showing the board, using dummy credentials with backend-managed HttpOnly cookie session and logout support.
+
+### Checklist
+
+- [x] Add backend auth endpoints:
+- [x] `POST /api/auth/login`
+- [x] `GET /api/auth/me`
+- [x] `POST /api/auth/logout`
+- [x] Validate credentials against `user` / `password`.
+- [x] Issue and validate HttpOnly session cookie.
+- [x] Add frontend auth gate so `/` requires sign in before board access.
+- [x] Add logout control in board UI.
+- [x] Add backend auth tests.
+- [x] Add frontend auth unit tests.
+- [x] Add frontend e2e test for login + logout flow.
+- [x] Validate containerized auth flow with smoke checks.
+
+### Tests
+
+- Backend tests: `docker run --rm -v "$PWD/backend:/work" -w /work ghcr.io/astral-sh/uv:python3.12-bookworm uv run --extra dev pytest -q`
+- Frontend unit tests: `cd frontend && npm run test:unit`
+- Frontend e2e tests: `cd frontend && npm run test:e2e`
+- Container auth smoke tests:
+- `GET /api/auth/me` without cookie returns `401`
+- `POST /api/auth/login` with `user` / `password` returns success and sets cookie
+- `GET /api/auth/me` with cookie returns authenticated user
+- `POST /api/auth/logout` clears session
+- `GET /api/auth/me` after logout returns `401`
+- Browser flow: `/` shows sign in, successful sign in shows Kanban, logout returns to sign in.
+
+### Success Criteria
+
+- On first load of `/`, user must sign in to access Kanban.
+- Only `user` / `password` signs in successfully.
+- Session is managed by backend HttpOnly cookie.
+- Logout returns user to signed-out state.
+- Backend, frontend unit, and frontend e2e tests all pass.
+- Containerized smoke checks pass for auth endpoints and browser flow.
+
+## Part 5: Database modeling
+
+### Objective
+
+Define and document the SQLite schema for persistent Kanban storage as JSON.
+
+### Checklist
+
+- [x] Propose SQLite schema for users + boards.
+- [x] Enforce one-board-per-user constraint at DB level.
+- [x] Define JSON storage field and contract.
+- [x] Document DB approach in `docs/DATABASE.md`.
+- [x] Add SQL DDL reference file in `docs/sqlite_schema.sql`.
+- [x] Get user sign-off on schema before implementation in Part 6.
+
+### Proposed Tables
+
+- `users`
+- `boards`
+
+### Success Criteria
+
+- Schema is documented and decision-complete for implementation.
+- One board per user is enforced by DB constraints.
+- JSON board structure and validation expectations are documented.
+- User explicitly approves before Part 6 backend persistence implementation.
+
+## Part 6: Backend
+
+### Objective
+
+Implement backend persistence APIs so authenticated users can read and update their board in SQLite.
+
+### Checklist
+
+- [x] Add SQLite access layer for users + board JSON persistence.
+- [x] Auto-create database file and tables when missing.
+- [x] Add authenticated `GET /api/board`.
+- [x] Add authenticated `PUT /api/board`.
+- [x] Create default board row when user has no board yet.
+- [x] Persist board updates and return updated payload.
+- [x] Add backend tests for auth protection, DB creation, read, write, and validation.
+- [x] Validate container smoke checks for board read/update flow.
+
+### Tests
+
+- Backend tests: `docker run --rm -v "$PWD/backend:/work" -w /work ghcr.io/astral-sh/uv:python3.12-bookworm uv run --extra dev pytest -q`
+- Board API smoke tests:
+- `GET /api/board` without auth returns `401`
+- login with `user` / `password`
+- `GET /api/board` returns board JSON
+- `PUT /api/board` persists updates
+- subsequent `GET /api/board` returns persisted data
+
+### Success Criteria
+
+- Backend reads/writes board state per authenticated user.
+- SQLite file/tables are created automatically when missing.
+- Invalid board payloads are rejected.
+- Backend tests pass with persistence coverage.
+- Containerized smoke checks pass for board endpoints.
+
+## Part 7: Frontend + Backend
+
+### Objective
+
+Connect frontend board interactions to backend board APIs so the board persists across reloads.
+
+### Checklist
+
+- [x] Load board state from `GET /api/board` after authentication.
+- [x] Persist board mutations through `PUT /api/board`.
+- [x] Keep existing board interactions (rename, add, delete, drag/move) working.
+- [x] Add frontend unit coverage for API-backed board sync.
+- [x] Update e2e coverage to include board API integration behavior.
+- [x] Validate containerized browser persistence flow (change -> reload persists).
+
+### Tests
+
+- Frontend unit tests: `cd frontend && npm run test:unit`
+- Frontend e2e tests: `cd frontend && npm run test:e2e`
+- Backend tests: `docker run --rm -v "$PWD/backend:/work" -w /work ghcr.io/astral-sh/uv:python3.12-bookworm uv run --extra dev pytest -q`
+- Browser persistence smoke:
+- Login at `/`
+- Change board data in UI (for example, rename first column)
+- Reload page
+- Confirm changed value remains
+
+### Success Criteria
+
+- Board loads from backend API instead of frontend-only seed state.
+- Any board change in UI persists to backend.
+- Reloading page keeps latest board state.
+- Frontend and backend test suites pass.
+- Browser-level persistence smoke check passes.
+
+## Part 8: AI connectivity
+
+Add OpenRouter connectivity in backend using `openai/gpt-oss-120b`. Verify with a simple connectivity test (`2+2`).
+
+## Part 9: Structured Outputs + Board Context
+
+Send board JSON, chat history, and user prompt to model. Require structured output with:
+
+- assistant response text
+- optional board mutation operation list
+
+Validate and apply operations atomically in backend.
+
+## Part 10: AI sidebar UX
+
+Add sidebar chat UI in frontend, display conversation history, submit prompts, and auto-refresh board when backend applies AI-generated updates.

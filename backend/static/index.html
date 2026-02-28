@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PM MVP Hello</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 2rem;
+        color: #032147;
+      }
+
+      h1 {
+        margin: 0 0 1rem;
+      }
+
+      p {
+        margin: 0.4rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Hello from FastAPI</h1>
+    <p id="status">Loading API message...</p>
+
+    <script>
+      async function loadMessage() {
+        const statusEl = document.getElementById("status");
+        try {
+          const response = await fetch("/api/hello");
+          const data = await response.json();
+          statusEl.textContent = `API says: ${data.message}`;
+        } catch (_error) {
+          statusEl.textContent = "Failed to load API message.";
+        }
+      }
+
+      loadMessage();
+    </script>
+  </body>
+</html>
