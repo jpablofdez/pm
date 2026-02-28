@@ -78,6 +78,22 @@ Optional API confirmation:
 - Read board:
 `curl -b /tmp/pm_board_cookie.txt http://localhost:8000/api/board`
 
+## Verify Part 8
+
+- Ensure `.env` in project root contains:
+`OPENROUTER_API_KEY=...`
+
+- Login:
+`curl -c /tmp/pm_ai_cookie.txt -H 'Content-Type: application/json' -d '{"username":"user","password":"password"}' http://localhost:8000/api/auth/login`
+
+- Connectivity test:
+`curl -b /tmp/pm_ai_cookie.txt -X POST http://localhost:8000/api/ai/test`
+
+Expected:
+
+- If key is missing/invalid: `500` with error detail.
+- If key is valid: `200` with `model`, `prompt`, and non-empty `response` text.
+
 ## Backend tests
 
 From project root:

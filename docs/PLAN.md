@@ -232,7 +232,35 @@ Connect frontend board interactions to backend board APIs so the board persists 
 
 ## Part 8: AI connectivity
 
-Add OpenRouter connectivity in backend using `openai/gpt-oss-120b`. Verify with a simple connectivity test (`2+2`).
+### Objective
+
+Add backend connectivity to OpenRouter using `openai/gpt-oss-120b:free`, with a simple `2+2` verification route.
+
+### Checklist
+
+- [x] Add backend AI client for OpenRouter chat completions.
+- [x] Add authenticated `POST /api/ai/test` endpoint with fixed prompt `2+2`.
+- [x] Return model name, prompt, and model response payload.
+- [x] Return simple `500` errors for missing key and upstream failures.
+- [x] Wire Docker Compose to load `OPENROUTER_API_KEY` automatically from `.env` when present.
+- [x] Add backend tests for auth, missing key, success path, and error path.
+- [x] Add real connectivity test that is skipped if `OPENROUTER_API_KEY` is missing.
+- [x] Run live model call and confirm real answer from OpenRouter in this environment.
+
+### Tests
+
+- Backend tests: `docker run --rm -v "$PWD/backend:/work" -w /work ghcr.io/astral-sh/uv:python3.12-bookworm uv run --extra dev pytest -q`
+- Connectivity endpoint behavior:
+- login with `user` / `password`
+- `POST /api/ai/test` returns `500` if key missing
+- `POST /api/ai/test` returns `200` and model text when key is configured and valid
+
+### Success Criteria
+
+- Backend can call OpenRouter model `openai/gpt-oss-120b:free`.
+- Endpoint returns a model response for prompt `2+2` when key is configured.
+- Failures are returned as simple `500` responses.
+- Tests pass, with live connectivity test skipped when no key is available.
 
 ## Part 9: Structured Outputs + Board Context
 

@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
+from app import ai_client
 from app.database import load_board_for_user, save_board_for_user
 from app.kanban_schema import BoardModel
 
@@ -144,6 +145,28 @@ def update_board(
     board_data = payload.model_dump()
     save_board_for_user(username, board_data)
     return board_data
+
+
+@app.post("/api/ai/test")
+def ai_test(
+    session_token: str | None = Cookie(default=None, alias=AUTH_COOKIE_NAME),
+) -> dict[str, str]:
+    _require_authenticated_username(session_token)
+
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY is not configured.")
+
+    try:
+        response = ai_client.run_connectivity_prompt(api_key=api_key, prompt="2+2")
+    except ai_client.AIConnectivityError as error:
+        raise HTTPException(status_code=500, detail=str(error)) from error
+
+    return {
+        "model": ai_client.OPENROUTER_MODEL,
+        "prompt": "2+2",
+        "response": response,
+    }
 
 
 if FRONTEND_DIST_DIR.exists():
