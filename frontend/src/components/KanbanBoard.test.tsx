@@ -86,4 +86,54 @@ describe("KanbanBoard", () => {
       );
     });
   });
+
+  it("sends chat prompt and applies AI board updates", async () => {
+    const boardFromApi = {
+      ...initialData,
+    };
+    const boardAfterAi = {
+      ...initialData,
+      columns: initialData.columns.map((column, index) =>
+        index === 0 ? { ...column, title: "Roadmap AI" } : column
+      ),
+    };
+
+    const fetchMock = vi
+      .spyOn(global, "fetch")
+      .mockResolvedValueOnce(mockResponse(200, boardFromApi))
+      .mockResolvedValueOnce(
+        mockResponse(200, {
+          assistantMessage: "Done. Backlog is now Roadmap AI.",
+          operations: [
+            {
+              type: "rename_column",
+              columnId: "col-backlog",
+              title: "Roadmap AI",
+            },
+          ],
+          boardUpdated: true,
+          board: boardAfterAi,
+        })
+      );
+
+    render(<KanbanBoard />);
+    await screen.findByDisplayValue("Backlog");
+
+    await userEvent.type(
+      screen.getByLabelText("Message AI assistant"),
+      "Rename Backlog to Roadmap AI"
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Send" }));
+
+    await screen.findByText("Done. Backlog is now Roadmap AI.");
+    await screen.findByDisplayValue("Roadmap AI");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/ai/chat",
+      expect.objectContaining({
+        method: "POST",
+        credentials: "include",
+      })
+    );
+  });
 });

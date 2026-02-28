@@ -112,6 +112,15 @@ Expected:
 - `boardUpdated` boolean
 - `board` payload
 
+## Verify Part 10
+
+- Open `http://localhost:8000/` and sign in with `user` / `password`.
+- In the `AI Assistant` sidebar, submit a prompt such as:
+`Rename Backlog to Roadmap AI`
+- Confirm the assistant response appears in the conversation.
+- Confirm the first column title updates in the board UI when the AI returns `boardUpdated: true`.
+- Submit a follow-up prompt and confirm conversation history keeps both user and assistant messages.
+
 ## Backend tests
 
 From project root:

@@ -20,7 +20,7 @@ export const AuthGate = () => {
           credentials: "include",
         });
         setAuthState(response.ok ? "authenticated" : "unauthenticated");
-      } catch (_error) {
+      } catch {
         setAuthState("unauthenticated");
       }
     };
@@ -51,7 +51,7 @@ export const AuthGate = () => {
 
       setPassword("");
       setAuthState("authenticated");
-    } catch (_error) {
+    } catch {
       setErrorMessage("Unable to sign in right now.");
     } finally {
       setIsSubmitting(false);

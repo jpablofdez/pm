@@ -101,6 +101,54 @@ const mockAuthenticatedSession = async (page: Page, board = createBoardFixture()
       body: JSON.stringify({ detail: "Method not allowed." }),
     });
   });
+  await page.route("**/api/ai/chat", async (route) => {
+    const payload = route.request().postDataJSON() as {
+      message?: string;
+      history?: Array<{ role: string; content: string }>;
+    };
+
+    const prompt = payload.message?.toLowerCase().trim() ?? "";
+
+    if (prompt.includes("rename backlog")) {
+      boardState = {
+        ...boardState,
+        columns: boardState.columns.map((column) =>
+          column.id === "col-backlog"
+            ? { ...column, title: "Roadmap AI" }
+            : column
+        ),
+      };
+
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          assistantMessage: "Done. Renamed Backlog to Roadmap AI.",
+          operations: [
+            {
+              type: "rename_column",
+              columnId: "col-backlog",
+              title: "Roadmap AI",
+            },
+          ],
+          boardUpdated: true,
+          board: boardState,
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        assistantMessage: "No board changes needed.",
+        operations: [],
+        boardUpdated: false,
+        board: boardState,
+      }),
+    });
+  });
 };
 
 test("loads the kanban board", async ({ page }) => {
@@ -235,4 +283,19 @@ test("persists board updates across reload", async ({ page }) => {
 
   await page.reload();
   await expect(firstColumn.getByLabel("Column title")).toHaveValue("Roadmap");
+});
+
+test("updates board from AI sidebar response", async ({ page }) => {
+  await mockAuthenticatedSession(page);
+
+  await page.goto("/");
+  await page
+    .getByLabel("Message AI assistant")
+    .fill("Please rename Backlog to Roadmap AI");
+  await page.getByRole("button", { name: "Send" }).click();
+
+  await expect(page.getByText("Done. Renamed Backlog to Roadmap AI.")).toBeVisible();
+  await expect(
+    page.getByTestId("column-col-backlog").getByLabel("Column title")
+  ).toHaveValue("Roadmap AI");
 });

@@ -33,3 +33,10 @@ This directory contains the Next.js Kanban demo UI used by the MVP.
 - `KanbanBoard` now loads board state from `GET /api/board`.
 - Board mutations persist via `PUT /api/board`.
 - UI state remains persisted after browser reload.
+
+## Part 10 Notes
+
+- `KanbanBoard` includes an `AI Assistant` sidebar.
+- Sidebar sends prompts to `POST /api/ai/chat` with conversation history.
+- Sidebar displays user/assistant messages for the active session.
+- Board UI updates immediately when AI returns `boardUpdated: true`.

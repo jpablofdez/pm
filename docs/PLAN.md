@@ -303,4 +303,30 @@ Add an authenticated AI chat backend route that sends board context to OpenRoute
 
 ## Part 10: AI sidebar UX
 
-Add sidebar chat UI in frontend, display conversation history, submit prompts, and auto-refresh board when backend applies AI-generated updates.
+### Objective
+
+Add a simple AI chat sidebar in the frontend that sends prompts to `/api/ai/chat`, renders conversation history, and updates the board state when AI operations are applied.
+
+### Checklist
+
+- [x] Add sidebar chat panel in the board UI.
+- [x] Add prompt input + submit flow for `/api/ai/chat`.
+- [x] Display user and assistant messages in conversation history.
+- [x] Reflect AI-updated board state in the UI when `boardUpdated` is true.
+- [x] Show lightweight error state when AI chat call fails.
+- [x] Add frontend unit coverage for AI sidebar send/update behavior.
+- [x] Add frontend e2e coverage for AI sidebar board update behavior.
+
+### Tests
+
+- Frontend unit tests: `cd frontend && npm run test:unit`
+- Frontend e2e tests: `cd frontend && npm run test:e2e`
+- Backend tests: `docker run --rm -v "$PWD/backend:/work" -w /work ghcr.io/astral-sh/uv:python3.12-bookworm uv run --extra dev pytest -q`
+
+### Success Criteria
+
+- Authenticated user can chat with AI from sidebar.
+- Conversation history remains visible in the session.
+- AI response can update board UI without page reload.
+- Existing board interactions continue to work.
+- Frontend and backend tests pass.
